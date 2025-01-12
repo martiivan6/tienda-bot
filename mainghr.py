@@ -7,7 +7,7 @@ from aiohttp import web
 BOT1_TOKEN = os.getenv("BOT1_TOKEN")
 BOT2_TOKEN = os.getenv("BOT2_TOKEN")
 
-# Configura la URL base para los webhooks (Render te dará esta URL)
+# Configura la URL base para los webhooks
 WEBHOOK_URL_BASE = os.getenv("WEBHOOK_URL_BASE", "https://<TU_RENDER_DOMINIO>.onrender.com")
 
 # Configura el primer bot
@@ -39,11 +39,6 @@ def setup_bot2():
         keyboard = [
             [InlineKeyboardButton("HACER PEDIDO", url='https://t.me/alh_1997')],
             [InlineKeyboardButton("VER ESTADO DEL PEDIDO", callback_data='ver_estado_del_pedido')],
-            [InlineKeyboardButton("VER CATALOGO", callback_data='ver_catalogo')],
-            [InlineKeyboardButton("GUIA DE TALLAS", callback_data='guia_de_tallas')],
-            [InlineKeyboardButton("PRECIOS", callback_data='precios')],
-            [InlineKeyboardButton("PROMOS", callback_data='promos')],
-            [InlineKeyboardButton("REDES SOCIALES", callback_data='redes_sociales')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await context.bot.send_message(
@@ -55,29 +50,11 @@ def setup_bot2():
     async def handle_callback(update: Update, context: CallbackContext) -> None:
         query = update.callback_query
         await query.answer()
-        back_to_main_menu_keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Volver al menú principal", callback_data='main_menu')]])
-
         if query.data == 'ver_estado_del_pedido':
             await query.edit_message_text(
-                "Aquí puedes ver el estado de tu pedido: http://123.207.20.21:8082/en/trackIndex.htm",
-                reply_markup=back_to_main_menu_keyboard
+                "Aquí puedes ver el estado de tu pedido: http://123.207.20.21:8082/en/trackIndex.htm"
             )
-        elif query.data == 'ver_catalogo':
-            keyboard = [
-                [InlineKeyboardButton("CAMISETAS DE FÚTBOL", callback_data='catalogo_futbol')],
-                [InlineKeyboardButton("⬅️ Volver al menú principal", callback_data='main_menu')]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text(
-                "Elige una categoría del catálogo:",
-                reply_markup=reply_markup
-            )
-        elif query.data == 'catalogo_futbol':
-            await query.edit_message_text(
-                "Has seleccionado CAMISETAS DE FÚTBOL https://drive.google.com/drive/folders/1lxyq6EjtylR8RlLGzB25OBBWEWt2wn6P.",
-                reply_markup=back_to_main_menu_keyboard
-            )
-        # Agrega más opciones aquí según tu lógica...
+        # Más lógica aquí...
 
     async def handle_message(update: Update, context: CallbackContext) -> None:
         if update.message.chat.type == "private":
@@ -95,19 +72,19 @@ bot1 = setup_bot1()
 bot2 = setup_bot2()
 
 # Configura los webhooks para ambos bots
-async def set_webhook(application, token, path):
+async def set_webhook(application, path):
     url = f"{WEBHOOK_URL_BASE}{path}"
     await application.bot.set_webhook(url=url)
 
 async def setup_webhooks():
-    await set_webhook(bot1, BOT1_TOKEN, "/bot1")
-    await set_webhook(bot2, BOT2_TOKEN, "/bot2")
+    await set_webhook(bot1, "/bot1")
+    await set_webhook(bot2, "/bot2")
 
 # Crea la aplicación web para manejar los webhooks
 app = web.Application()
 app.add_routes([
-    web.post("/bot1", bot1.webhook_handler),
-    web.post("/bot2", bot2.webhook_handler),
+    web.post("/bot1", bot1.update_queue.put),
+    web.post("/bot2", bot2.update_queue.put),
 ])
 
 # Inicia el servidor web
@@ -115,4 +92,4 @@ if __name__ == '__main__':
     import asyncio
     loop = asyncio.get_event_loop()
     loop.run_until_complete(setup_webhooks())
-    web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", 8443)))
+    web.run_app(app, host="0.0.0.0", port=int(os.getenv("PORT", 10000)))
